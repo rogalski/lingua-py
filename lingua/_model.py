@@ -13,18 +13,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import importlib.resources
 import math
-import numpy as np
-import regex
-
 from collections import Counter
 from dataclasses import dataclass
 from fractions import Fraction
 from pathlib import Path
-from typing import Counter as TypedCounter, Dict, List, Optional
+from typing import Counter as TypedCounter
+from typing import Dict, List, Optional
 
-from .language import Language
+import numpy as np
+import regex
+
 from ._ngram import _get_ngram_name_by_length, _NgramRange
+from .language import Language
 
 
 @dataclass
@@ -60,13 +62,14 @@ class _TrainingDataLanguageModel:
     ) -> Optional[np.ndarray]:
         ngram_name = _get_ngram_name_by_length(ngram_length)
         iso_code = language.iso_code_639_1.name.lower()
-        relative_file_path = f"./language-models/{iso_code}/{ngram_name}s.npz"
-        absolute_file_path = Path(__file__).parent / relative_file_path
+        models_package = f"{__package__}.language-models.{iso_code}"
+        model_name = f"{ngram_name}s.npz"
         try:
-            with np.load(absolute_file_path) as data:
-                return data["arr"]
+            with importlib.resources.open_binary(models_package, model_name) as fh:
+                with np.load(fh) as data:
+                    return data["arr"]
         except OSError:
-            return None
+            raise
 
     def to_numpy_binary_file(self, file_path: Path, ngram_length: int):
         frequencies = []
